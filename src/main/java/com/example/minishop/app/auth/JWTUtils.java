@@ -25,8 +25,11 @@ public class JWTUtils {
     private static final long TOKEN_VALIDITY_REMEMBER = 2592000000L;
     private final Key key;
 
-    public JWTUtils(@Value("${app.jwtSecret}") String secret) {
-        this.key = Keys.hmacShaKeyFor(secret.getBytes());
+    @Value("${app.oauth2.provider.google.secret}")
+    private String googleSecret;
+
+    public JWTUtils() {
+        this.key = Keys.hmacShaKeyFor(googleSecret.getBytes());
     }
 
     public String createToken(UserModel account, boolean rememberMe) {

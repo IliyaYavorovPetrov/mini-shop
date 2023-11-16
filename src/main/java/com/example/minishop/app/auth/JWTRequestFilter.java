@@ -16,7 +16,6 @@ import java.util.Arrays;
 
 @Component
 public class JWTRequestFilter extends OncePerRequestFilter {
-
     private final JWTUtils jwtUtils;
 
     public JWTRequestFilter(JWTUtils jwtUtils) {

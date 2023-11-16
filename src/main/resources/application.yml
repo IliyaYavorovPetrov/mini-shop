@@ -1,3 +1,11 @@
+app:
+  client:
+    host: ${CLIENT_HOST}
+  oauth2:
+    provider:
+      google:
+        id: google
+        secret: google
 spring:
   profiles:
     active: ${ENVIRONMENT}
