@@ -4,8 +4,8 @@ app:
   oauth2:
     provider:
       google:
-        id: google
-        secret: google
+        id: ${GOOGLE_CLIENT_ID}
+        secret: ${GOOGLE_CLIENT_SECRET}
 spring:
   profiles:
     active: ${ENVIRONMENT}

@@ -1,5 +1,6 @@
 package com.example.minishop.app.users;
 
+
 import com.example.minishop.app.users.dtos.UserRequestDTO;
 import com.example.minishop.app.users.dtos.UserResponseDTO;
 import com.example.minishop.app.users.entities.UserEntity;
@@ -10,6 +11,8 @@ import org.slf4j.LoggerFactory;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.EnumSet;
+
+import static com.example.minishop.app.auth.JWTUtils.ROLE_CLAIM_NAME;
 
 public class UserMapper {
     private static final Logger logger = LoggerFactory.getLogger(UserMapper.class);
@@ -25,8 +28,18 @@ public class UserMapper {
                 userRoleType);
     }
 
+    public static UserRequestDTO fromUserModelToUserRequestDTO(UserModel userModel) {
+        return new UserRequestDTO(
+                userModel.getId(),
+                userModel.getName(),
+                userModel.getEmail(),
+                userModel.getImageURL(),
+                userModel.getRole().name()
+        );
+    }
+
     public static UserEntity fromResultSetToUserEntity(ResultSet resultSet, int rowNumber) throws SQLException {
-        UserRoleType userRoleType = getRoleTypeFromStringOrDefault(resultSet.getString("role"));
+        UserRoleType userRoleType = getRoleTypeFromStringOrDefault(resultSet.getString(ROLE_CLAIM_NAME));
 
         return new UserEntity(
                 resultSet.getString("id"),

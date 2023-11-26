@@ -8,6 +8,7 @@ import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.stereotype.Component;
@@ -20,44 +21,53 @@ import java.util.Map;
 
 @Component
 public class JWTUtils {
+    private static final long TOKEN_VALIDITY = 100000L;
+    public static final String ROLE_CLAIM_NAME = "role";
+    private final Key googleKey;
 
-    private static final long TOKEN_VALIDITY = 86400000L;
-    private static final long TOKEN_VALIDITY_REMEMBER = 2592000000L;
-    private final Key key;
-
-    @Value("${app.oauth2.provider.google.secret}")
-    private String googleSecret;
-
-    public JWTUtils() {
-        this.key = Keys.hmacShaKeyFor(googleSecret.getBytes());
+    public JWTUtils(@Value("${app.oauth2.provider.google.secret}") String googleClientSecret) {
+        this.googleKey = Keys.hmacShaKeyFor(googleClientSecret.getBytes());
     }
 
-    public String createToken(UserModel account, boolean rememberMe) {
+    public String createToken(UserModel userModel, AuthProviderType authProviderType) {
         long now = (new Date()).getTime();
-        Date validity = rememberMe ? new Date(now + TOKEN_VALIDITY_REMEMBER) : new Date(now + TOKEN_VALIDITY);
+        Key key = getProperKey(authProviderType);
+
         Map<String, Object> claims = new HashMap<>();
-        claims.put("role", account.getRole());
+        claims.put(ROLE_CLAIM_NAME, userModel.getRole());
 
         return Jwts.builder()
-                .setSubject(account.getId())
+                .setSubject(userModel.getId())
                 .setIssuedAt(new Date())
-                .setExpiration(validity)
+                .setExpiration(new Date(now + TOKEN_VALIDITY))
                 .addClaims(claims)
                 .signWith(key, SignatureAlgorithm.HS512)
                 .compact();
     }
 
-    public UsernamePasswordAuthenticationToken verifyAndGetAuthentication(String token) {
+    public Authentication verifyAndGetAuthentication(String token, AuthProviderType authProviderType) {
         try {
+            Key key = getProperKey(authProviderType);
+
             Claims claims = Jwts.parserBuilder()
                     .setSigningKey(key)
                     .build()
                     .parseClaimsJws(token)
                     .getBody();
-            List<GrantedAuthority> authorities = AuthorityUtils.commaSeparatedStringToAuthorityList(claims.get("role", String.class));
+            List<GrantedAuthority> authorities = AuthorityUtils.commaSeparatedStringToAuthorityList(claims.get(ROLE_CLAIM_NAME, String.class));
+
             return new UsernamePasswordAuthenticationToken(claims.getSubject(), token, authorities);
-        } catch (JwtException | IllegalArgumentException ignored) {
+        } catch (Exception ex) {
             return null;
         }
+    }
+
+    private Key getProperKey(AuthProviderType authProviderType) {
+        Key key = googleKey;
+        if (authProviderType.equals(AuthProviderType.GOOGLE)) {
+            key = googleKey;
+        }
+
+        return key;
     }
 }

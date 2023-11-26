@@ -8,7 +8,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @Configuration
 public class AppConfig implements WebMvcConfigurer {
-    @Value("${app.client.host")
+    @Value("${app.client.host}")
     private String clientHost;
 
     @Override

@@ -16,12 +16,13 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.Optional;
 
 import static com.example.minishop.app.users.UserMapper.fromUserModelToUserResponseDTO;
 
 @RestController
 @RequestMapping("/users")
-public class UsersController extends BaseController{
+public class UsersController extends BaseController {
     private final UsersService usersService;
 
     public UsersController(UsersService usersService) {
@@ -40,12 +41,8 @@ public class UsersController extends BaseController{
 
     @GetMapping("/{id}")
     public ResponseEntity<UserResponseDTO> getUserById(@PathVariable String id) {
-        UserModel userModel = usersService.getUserById(id);
-        if (userModel == null) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-        }
-
-        return ResponseEntity.ok().body(fromUserModelToUserResponseDTO(userModel));
+        Optional<UserModel> userModel = usersService.getUserById(id);
+        return userModel.map(model -> ResponseEntity.ok().body(fromUserModelToUserResponseDTO(model))).orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).build());
     }
 
     @GetMapping

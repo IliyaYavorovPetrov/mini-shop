@@ -8,14 +8,14 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 
-import static com.example.minishop.app.users.UserMapper.*;
-
+import static com.example.minishop.app.users.UserMapper.fromUserModelToUserEntity;
+import static com.example.minishop.app.users.UserMapper.fromUserRequestDTOtoUserModel;
 
 @Service
 public class UsersService {
     private final Logger logger = LoggerFactory.getLogger(UsersService.class);
-
     private final UsersRepository usersRepository;
 
     public UsersService(UsersRepository usersRepository) {
@@ -38,14 +38,10 @@ public class UsersService {
         return usersRepository.save(userEntity);
     }
 
-    public UserModel getUserById(String id) {
-        UserEntity userEntity = usersRepository.findById(id);
+    public Optional<UserModel> getUserById(String id) {
+        Optional<UserEntity> userEntity = usersRepository.findById(id);
 
-        if (userEntity == null) {
-            return null;
-        }
-
-        return fromUserEntityToUserModel(userEntity);
+        return userEntity.map(UserMapper::fromUserEntityToUserModel);
     }
 
     public List<UserModel> getAllUsers() {

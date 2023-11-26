@@ -13,6 +13,7 @@ import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 
 @Repository
 public class UsersRepository {
@@ -53,17 +54,17 @@ public class UsersRepository {
         return Objects.requireNonNull(keyHolder.getKey()).toString();
     }
 
-    public UserEntity findById(String id) {
+    public Optional<UserEntity> findById(String id) {
         String query = """
                 SELECT id, name, email, imageURL, role FROM users
                 WHERE id = ?
                 """;
 
         try {
-            return jdbcTemplate.queryForObject(query, UserMapper::fromResultSetToUserEntity, id);
+            return Optional.ofNullable(jdbcTemplate.queryForObject(query, UserMapper::fromResultSetToUserEntity, id));
         } catch (Exception e) {
             logger.error(String.format("Failed to find user with id %s", id), e);
-            return null;
+            return Optional.empty();
         }
     }
 
