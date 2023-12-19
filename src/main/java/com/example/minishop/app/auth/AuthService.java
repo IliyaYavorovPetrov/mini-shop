@@ -1,11 +1,11 @@
 package com.example.minishop.app.auth;
 
-import com.example.minishop.app.auth.dtos.LoginRequestDTO;
-import com.example.minishop.app.auth.dtos.LoginResponseDTO;
-import com.example.minishop.app.auth.dtos.RegisterRequestDTO;
-import com.example.minishop.app.auth.dtos.RegisterResponseDTO;
+import com.example.minishop.app.auth.dtos.SignInRequestDTO;
+import com.example.minishop.app.auth.dtos.SignUpRequestDTO;
+import com.example.minishop.app.auth.models.SignInModel;
+import com.example.minishop.app.auth.models.SignUpModel;
 import com.example.minishop.app.users.UserRoleType;
-import com.example.minishop.app.users.UsersService;
+import com.example.minishop.app.users.UserService;
 import com.example.minishop.app.users.models.UserModel;
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
@@ -25,11 +25,16 @@ import static com.example.minishop.app.users.UserMapper.fromUserModelToUserReque
 @Service
 public class AuthService {
     private final Logger logger = LoggerFactory.getLogger(AuthService.class);
-    private final UsersService usersService;
+    private final UserService usersService;
     private final JWTUtils jwtUtils;
     private final GoogleIdTokenVerifier googleIdTokenVerifier;
 
-    public AuthService(@Value("${app.oauth2.provider.google.id}") String googleClientID, UsersService usersService, JWTUtils jwtUtils) {
+    public AuthService(
+            @Value("${app.oauth2.provider.google.id}") String googleClientID,
+            @Value("${app.oauth2.provider.facebook.id}") String facebookClientID,
+            UserService usersService,
+            JWTUtils jwtUtils
+    ) {
         this.usersService = usersService;
         this.jwtUtils = jwtUtils;
         NetHttpTransport transport = new NetHttpTransport();
@@ -39,26 +44,28 @@ public class AuthService {
                 .build();
     }
 
-    public RegisterResponseDTO register(RegisterRequestDTO registerRequestDTO, AuthProviderType authProviderType) {
-        Optional<UserModel> userFromProvider = verifyToken(registerRequestDTO.token(), authProviderType);
+    public Optional<SignUpModel> signUp(SignUpRequestDTO signUpRequestDTO, AuthProviderType authProviderType) {
+        Optional<UserModel> userFromProvider = verifyToken(signUpRequestDTO.token(), authProviderType);
         if (userFromProvider.isEmpty()) {
-            throw new IllegalArgumentException();
+            return Optional.empty();
         }
 
         String userID = usersService.createUser(fromUserModelToUserRequestDTO(userFromProvider.get()));
 
-        return new RegisterResponseDTO(
-                jwtUtils.createToken(userFromProvider.get(), authProviderType),
-                userID,
-                UserRoleType.CLIENT.name(),
-                authProviderType.name()
+        return Optional.of(
+                new SignUpModel(
+                        jwtUtils.createToken(userFromProvider.get(), authProviderType),
+                        userID,
+                        UserRoleType.CLIENT.name(),
+                        authProviderType.name()
+                )
         );
     }
 
-    public LoginResponseDTO login(LoginRequestDTO loginRequestDTO, AuthProviderType authProviderType) {
-        Optional<UserModel> userFromProvider = verifyToken(loginRequestDTO.token(), authProviderType);
+    public Optional<SignInModel> signIn(SignInRequestDTO signInRequestDTO, AuthProviderType authProviderType) {
+        Optional<UserModel> userFromProvider = verifyToken(signInRequestDTO.token(), authProviderType);
         if (userFromProvider.isEmpty()) {
-            throw new IllegalArgumentException();
+            return Optional.empty();
         }
 
         Optional<UserModel> user = usersService.getUserById(userFromProvider.get().getId());
@@ -66,11 +73,13 @@ public class AuthService {
             throw new IllegalArgumentException();
         }
 
-        return new LoginResponseDTO(
-                jwtUtils.createToken(user.get(), authProviderType),
-                user.get().getId(),
-                user.get().getRole().toString(),
-                authProviderType.name()
+        return Optional.of(
+                new SignInModel(
+                        jwtUtils.createToken(user.get(), authProviderType),
+                        user.get().getId(),
+                        user.get().getRole().toString(),
+                        authProviderType.name()
+                )
         );
     }
 
@@ -86,12 +95,14 @@ public class AuthService {
                 String id = payload.getSubject();
                 String name = (String) payload.get("name");
                 String email = payload.getEmail();
-                String imageURL = (String) payload.get("image");
+                String imageURL = (String) payload.get("picture");
 
                 return Optional.of(new UserModel(id, name, email, imageURL, UserRoleType.CLIENT));
+            } else if (authProviderType.equals(AuthProviderType.FACEBOOK)) {
+
             }
         } catch (Exception ex) {
-            logger.error("Failed to verify");
+            logger.error("Failed to verify token with error message {}", ex.getMessage());
         }
 
         return Optional.empty();

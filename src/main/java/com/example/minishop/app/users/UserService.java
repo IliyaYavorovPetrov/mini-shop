@@ -14,11 +14,11 @@ import static com.example.minishop.app.users.UserMapper.fromUserModelToUserEntit
 import static com.example.minishop.app.users.UserMapper.fromUserRequestDTOtoUserModel;
 
 @Service
-public class UsersService {
-    private final Logger logger = LoggerFactory.getLogger(UsersService.class);
-    private final UsersRepository usersRepository;
+public class UserService {
+    private final Logger logger = LoggerFactory.getLogger(UserService.class);
+    private final UserRepository usersRepository;
 
-    public UsersService(UsersRepository usersRepository) {
+    public UserService(UserRepository usersRepository) {
         this.usersRepository = usersRepository;
     }
 
@@ -48,7 +48,7 @@ public class UsersService {
         List<UserEntity> userEntities = usersRepository.findAll();
 
         if (userEntities == null) {
-            return null;
+            return List.of();
         }
 
         return userEntities.stream()

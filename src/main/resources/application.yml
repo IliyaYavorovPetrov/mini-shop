@@ -6,6 +6,9 @@ app:
       google:
         id: ${GOOGLE_CLIENT_ID}
         secret: ${GOOGLE_CLIENT_SECRET}
+      facebook:
+        id: ${FACEBOOK_CLIENT_ID}
+        secret: ${FACEBOOK_CLIENT_SECRET}
 spring:
   profiles:
     active: ${ENVIRONMENT}

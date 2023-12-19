@@ -16,12 +16,12 @@ import java.util.Objects;
 import java.util.Optional;
 
 @Repository
-public class UsersRepository {
-    private final Logger logger = LoggerFactory.getLogger(UsersRepository.class);
+public class UserRepository {
+    private final Logger logger = LoggerFactory.getLogger(UserRepository.class);
 
     private final JdbcTemplate jdbcTemplate;
 
-    public UsersRepository(JdbcTemplate jdbcTemplate) {
+    public UserRepository(JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
     }
 

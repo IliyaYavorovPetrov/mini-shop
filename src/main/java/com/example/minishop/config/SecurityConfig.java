@@ -26,14 +26,18 @@ public class SecurityConfig {
                 .cors(Customizer.withDefaults())
                 .csrf(csrf -> csrf
                         .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
-                        .ignoringRequestMatchers("/api/v0/login")
+                        .ignoringRequestMatchers("/api/v0/sign-up")
+                        .ignoringRequestMatchers("/api/v0/sign-in")
                 )
                 .sessionManagement(sessionManagement -> sessionManagement
-                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                )
                 .addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class)
                 .authorizeHttpRequests(request -> request
-                        .requestMatchers("/api/v0/login").permitAll()
-                        .anyRequest().authenticated());
+                        .requestMatchers("/api/v0/sign-up").permitAll()
+                        .requestMatchers("/api/v0/sign-in").permitAll()
+                        .anyRequest().authenticated()
+                );
 
         return http.build();
     }

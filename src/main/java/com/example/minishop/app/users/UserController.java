@@ -22,10 +22,10 @@ import static com.example.minishop.app.users.UserMapper.fromUserModelToUserRespo
 
 @RestController
 @RequestMapping("/users")
-public class UsersController extends BaseController {
-    private final UsersService usersService;
+public class UserController extends BaseController {
+    private final UserService usersService;
 
-    public UsersController(UsersService usersService) {
+    public UserController(UserService usersService) {
         this.usersService = usersService;
     }
 
