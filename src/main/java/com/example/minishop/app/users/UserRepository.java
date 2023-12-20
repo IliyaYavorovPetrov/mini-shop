@@ -4,6 +4,9 @@ import com.example.minishop.app.users.entities.UserEntity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.PreparedStatementCreator;
+import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
+import org.springframework.jdbc.core.namedparam.SqlParameterSource;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
@@ -27,36 +30,32 @@ public class UserRepository {
 
     public String save(UserEntity userEntity) {
         String query = """
-                INSERT INTO users (id, name, email, imageURL, role, createdAt, updatedAt)
+                INSERT INTO users (id, name, email, image_url, role, created_at, updated_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
                 """;
-        KeyHolder keyHolder = new GeneratedKeyHolder();
         Instant currentTime = Instant.now();
-
         try {
-            jdbcTemplate.update(connection -> {
-                PreparedStatement statement = connection.prepareStatement(query, new String[]{"id"});
-                statement.setString(1, userEntity.getId());
-                statement.setString(2, userEntity.getName());
-                statement.setString(3, userEntity.getEmail());
-                statement.setString(4, userEntity.getImageURL());
-                statement.setString(5, userEntity.getRole().name());
-                statement.setTimestamp(6, Timestamp.from(currentTime));
-                statement.setTimestamp(7, Timestamp.from(currentTime));
-                return statement;
-            }, keyHolder);
-        }
-        catch (Exception e) {
+            jdbcTemplate.update(
+                    query,
+                    userEntity.getId(),
+                    userEntity.getName(),
+                    userEntity.getEmail(),
+                    userEntity.getImageURL(),
+                    userEntity.getRole().name(),
+                    Timestamp.from(currentTime),
+                    Timestamp.from(currentTime)
+            );
+        } catch (Exception e) {
             logger.error(String.format("Failed to save user with id %s", userEntity.getId()), e);
             return null;
         }
 
-        return Objects.requireNonNull(keyHolder.getKey()).toString();
+        return userEntity.getId();
     }
 
     public Optional<UserEntity> findById(String id) {
         String query = """
-                SELECT id, name, email, imageURL, role FROM users
+                SELECT id, name, email, image_url, role FROM users
                 WHERE id = ?
                 """;
 
@@ -70,7 +69,7 @@ public class UserRepository {
 
     public List<UserEntity> findAll() {
         String query = """
-                SELECT id, name, email, imageURL, role FROM users
+                SELECT id, name, email, image_url, role FROM users
                 """;
 
         try {
@@ -83,7 +82,7 @@ public class UserRepository {
 
     public String updateUser(UserEntity userEntity) {
         String query = """
-                UPDATE users SET name = ?, email = ?, imageURL = ?, role = ?
+                UPDATE users SET name = ?, email = ?, image_url = ?, role = ?
                 WHERE id = ?
                 """;
         KeyHolder keyHolder = new GeneratedKeyHolder();
@@ -128,10 +127,13 @@ public class UserRepository {
                 SELECT COUNT(*) FROM users
                 WHERE id = ?
                 """;
-        int numberAffectedRecords;
+        Integer numberAffectedRecords;
 
         try {
-            numberAffectedRecords = jdbcTemplate.update(query, id);
+            numberAffectedRecords = jdbcTemplate.queryForObject(query, Integer.class, id);
+            if (numberAffectedRecords == null) {
+                return false;
+            }
         } catch (Exception e) {
             logger.error(String.format("Failed to check if user with id %s exists", id), e);
             return null;

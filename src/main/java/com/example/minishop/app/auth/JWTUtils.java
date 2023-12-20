@@ -37,15 +37,8 @@ public class JWTUtils {
             @Value("${app.oauth2.provider.google.secret}") String googleClientSecret,
             @Value("${app.oauth2.provider.facebook.secret}") String facebookClientSecret
     ) {
-        ByteBuffer buffer = ByteBuffer.allocate(
-                googleClientSecret.getBytes().length
-                        + DELIMITER.getBytes().length
-                        + googleClientSecret.getBytes().length
-        );
-        buffer.put(googleClientSecret.getBytes());
-        buffer.put(DELIMITER.getBytes());
-        buffer.put(googleClientSecret.getBytes());
-        this.googleKey = Keys.hmacShaKeyFor(buffer.array());
+        String googleKey = googleClientSecret + DELIMITER + googleClientSecret;
+        this.googleKey = Keys.hmacShaKeyFor(googleKey.getBytes());
         this.facebookKey = Keys.hmacShaKeyFor(facebookClientSecret.getBytes());
     }
 
