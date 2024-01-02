@@ -15,6 +15,7 @@ import com.google.api.client.json.jackson2.JacksonFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.ResponseCookie;
 import org.springframework.stereotype.Service;
 
 import java.util.Collections;
@@ -24,6 +25,7 @@ import static com.example.minishop.app.users.UserMapper.fromUserModelToUserReque
 
 @Service
 public class AuthService {
+
     private final Logger logger = LoggerFactory.getLogger(AuthService.class);
     private final UserService usersService;
     private final JWTUtils jwtUtils;
@@ -45,7 +47,7 @@ public class AuthService {
     }
 
     public Optional<SignUpModel> signUp(SignUpRequestDTO signUpRequestDTO, AuthProviderType authProviderType) {
-        Optional<UserModel> userFromProvider = verifyToken(signUpRequestDTO.token(), authProviderType);
+        Optional<UserModel> userFromProvider = verifyIdentity(signUpRequestDTO.token(), authProviderType);
         if (userFromProvider.isEmpty()) {
             return Optional.empty();
         }
@@ -63,7 +65,7 @@ public class AuthService {
     }
 
     public Optional<SignInModel> signIn(SignInRequestDTO signInRequestDTO, AuthProviderType authProviderType) {
-        Optional<UserModel> userFromProvider = verifyToken(signInRequestDTO.token(), authProviderType);
+        Optional<UserModel> userFromProvider = verifyIdentity(signInRequestDTO.token(), authProviderType);
         if (userFromProvider.isEmpty()) {
             return Optional.empty();
         }
@@ -83,7 +85,7 @@ public class AuthService {
         );
     }
 
-    private Optional<UserModel> verifyToken(String token, AuthProviderType authProviderType) {
+    private Optional<UserModel> verifyIdentity(String token, AuthProviderType authProviderType) {
         try {
             if (authProviderType.equals(AuthProviderType.GOOGLE)) {
                 GoogleIdToken googleIDToken = googleIDTokenVerifier.verify(token);
@@ -107,4 +109,5 @@ public class AuthService {
 
         return Optional.empty();
     }
+
 }

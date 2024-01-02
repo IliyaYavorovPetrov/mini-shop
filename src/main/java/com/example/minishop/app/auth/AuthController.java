@@ -6,9 +6,7 @@ import com.example.minishop.app.auth.dtos.SignUpRequestDTO;
 import com.example.minishop.app.auth.dtos.SignUpResponseDTO;
 import com.example.minishop.app.auth.models.SignInModel;
 import com.example.minishop.app.auth.models.SignUpModel;
-import com.example.minishop.app.users.models.UserModel;
 import com.example.minishop.base.BaseController;
-import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
@@ -21,60 +19,93 @@ import java.util.Optional;
 @RestController
 public class AuthController extends BaseController {
     private final AuthService authService;
+    private final JWTUtils jwtUtils;
 
-    public AuthController(AuthService authService) {
+    public AuthController(AuthService authService, JWTUtils jwtUtils) {
         this.authService = authService;
+        this.jwtUtils = jwtUtils;
     }
 
     @PostMapping("/sign-up")
     public ResponseEntity<SignUpResponseDTO> signUp(
             @RequestBody SignUpRequestDTO signUpRequestDTO
     ) throws IllegalAccessException {
-        Optional<SignUpModel> signUpResult = authService.signUp(signUpRequestDTO, AuthProviderType.valueOf(signUpRequestDTO.authProvider()));
+        Optional<SignUpModel> signUpResult = authService.signUp(
+                signUpRequestDTO,
+                AuthProviderType.valueOf(signUpRequestDTO.authProvider())
+        );
         if (signUpResult.isEmpty()) {
             throw new IllegalAccessException();
         }
 
-        String authToken = signUpResult.get().getToken();
-        final ResponseCookie cookie = ResponseCookie.from("AUTH-TOKEN", authToken)
-                .httpOnly(false)
-                .maxAge(7 * 24 * 3600)
-                .path("/")
-                .secure(false)
-                .build();
+        ResponseCookie cookieAuthToken = jwtUtils.getCookie(
+                JWTUtils.COOKIE_AUTH_TOKEN_NAME,
+                signUpResult.get().getToken(),
+                JWTUtils.TOKEN_VALIDITY_SECS
+        );
+
+        ResponseCookie cookieAuthProvider = jwtUtils.getCookie(
+                JWTUtils.COOKIE_AUTH_PROVIDER_NAME,
+                signUpResult.get().getAuthProvider(),
+                JWTUtils.TOKEN_VALIDITY_SECS
+        );
 
         return ResponseEntity
                 .ok()
-                .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                .header(HttpHeaders.SET_COOKIE, cookieAuthToken.toString())
+                .header(HttpHeaders.SET_COOKIE, cookieAuthProvider.toString())
                 .body(AuthMapper.fromSignUpModelToSignUpRequestDTO(signUpResult.get()));
     }
 
     @PostMapping("/sign-in")
     public ResponseEntity<SignInResponseDTO> signIn(
-            @RequestBody SignInRequestDTO signInRequestDTO,
-            HttpServletResponse response
+            @RequestBody SignInRequestDTO signInRequestDTO
     ) throws IllegalAccessException {
-        Optional<SignInModel> signInResult = authService.signIn(signInRequestDTO, AuthProviderType.valueOf(signInRequestDTO.authProvider()));
+        Optional<SignInModel> signInResult = authService.signIn(
+                signInRequestDTO,
+                AuthProviderType.valueOf(signInRequestDTO.authProvider())
+        );
         if (signInResult.isEmpty()) {
             throw new IllegalAccessException();
         }
 
-        String authToken = signInResult.get().getToken();
-        final ResponseCookie cookie = ResponseCookie.from("AUTH-TOKEN", authToken)
-                .httpOnly(false)
-                .maxAge(7 * 24 * 3600)
-                .path("/")
-                .secure(false)
-                .build();
-        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
-        return ResponseEntity.ok(new SignInResponseDTO(signInResult.get().getUserID(), signInResult.get().getUserRole(), signInResult.get().getAuthProvider()));
+        ResponseCookie cookieAuthToken = jwtUtils.getCookie(
+                JWTUtils.COOKIE_AUTH_TOKEN_NAME,
+                signInResult.get().getToken(),
+                JWTUtils.TOKEN_VALIDITY_SECS
+        );
+
+        ResponseCookie cookieAuthProvider = jwtUtils.getCookie(
+                JWTUtils.COOKIE_AUTH_PROVIDER_NAME,
+                signInResult.get().getAuthProvider(),
+                JWTUtils.TOKEN_VALIDITY_SECS
+        );
+
+        return ResponseEntity
+                .ok()
+                .header(HttpHeaders.SET_COOKIE, cookieAuthToken.toString())
+                .header(HttpHeaders.SET_COOKIE, cookieAuthProvider.toString())
+                .body(AuthMapper.fromSignInModelToSignInRequestDTO(signInResult.get()));
     }
 
     @PostMapping("/sign-out")
-    public ResponseEntity<Void> signOut(
-            HttpServletResponse response
-    ) {
-        response.addHeader(HttpHeaders.SET_COOKIE, "");
-        return ResponseEntity.ok().build();
+    public ResponseEntity<Void> signOut() {
+        ResponseCookie cookieAuthToken = jwtUtils.getCookie(
+                JWTUtils.COOKIE_AUTH_TOKEN_NAME,
+                "",
+                JWTUtils.TOKEN_VALIDITY_SECS
+        );
+
+        ResponseCookie cookieAuthProvider = jwtUtils.getCookie(
+                JWTUtils.COOKIE_AUTH_PROVIDER_NAME,
+                "",
+                JWTUtils.TOKEN_VALIDITY_SECS
+        );
+
+        return ResponseEntity
+                .ok()
+                .header(HttpHeaders.SET_COOKIE, cookieAuthToken.toString())
+                .header(HttpHeaders.SET_COOKIE, cookieAuthProvider.toString())
+                .build();
     }
 }

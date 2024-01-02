@@ -17,13 +17,10 @@ public class AppConfig implements WebMvcConfigurer {
                 .allowedOrigins(clientHost)
                 .allowedMethods(
                         HttpMethod.GET.name(),
-                        HttpMethod.HEAD.name(),
                         HttpMethod.POST.name(),
                         HttpMethod.PUT.name(),
                         HttpMethod.PATCH.name(),
-                        HttpMethod.DELETE.name(),
-                        HttpMethod.OPTIONS.name(),
-                        HttpMethod.TRACE.name()
+                        HttpMethod.DELETE.name()
                 )
                 .allowedHeaders("*")
                 .allowCredentials(true);

@@ -2,22 +2,20 @@ package com.example.minishop.app.auth;
 
 import com.example.minishop.app.users.models.UserModel;
 import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.ResponseCookie;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.stereotype.Component;
 
-import java.nio.ByteBuffer;
 import java.security.Key;
-import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -25,7 +23,9 @@ import java.util.Map;
 
 @Component
 public class JWTUtils {
-    private static final long TOKEN_VALIDITY = 100000L;
+    public static final long TOKEN_VALIDITY_SECS = 18000L;
+    public static final String COOKIE_AUTH_TOKEN_NAME = "AUTH-TOKEN";
+    public static final String COOKIE_AUTH_PROVIDER_NAME = "AUTH-PROVIDER";
     public static final String ROLE_CLAIM_NAME = "role";
     private static final String DELIMITER = "|";
     private final Key googleKey;
@@ -34,11 +34,10 @@ public class JWTUtils {
     private final Logger logger = LoggerFactory.getLogger(JWTUtils.class);
 
     public JWTUtils(
-            @Value("${app.oauth2.provider.google.secret}") String googleClientSecret,
+            @Value("${app.oauth2.provider.google.id}") String googleClientSecret,
             @Value("${app.oauth2.provider.facebook.secret}") String facebookClientSecret
     ) {
-        String googleKey = googleClientSecret + DELIMITER + googleClientSecret;
-        this.googleKey = Keys.hmacShaKeyFor(googleKey.getBytes());
+        this.googleKey = Keys.hmacShaKeyFor(googleClientSecret.getBytes());
         this.facebookKey = Keys.hmacShaKeyFor(facebookClientSecret.getBytes());
     }
 
@@ -50,7 +49,7 @@ public class JWTUtils {
         return Jwts.builder()
                 .setSubject(userModel.getId())
                 .setIssuedAt(new Date())
-                .setExpiration(new Date((new Date()).getTime() + TOKEN_VALIDITY))
+                .setExpiration(new Date((new Date()).getTime() + TOKEN_VALIDITY_SECS))
                 .addClaims(claims)
                 .signWith(key, SignatureAlgorithm.HS512)
                 .compact();
@@ -65,7 +64,9 @@ public class JWTUtils {
                     .build()
                     .parseClaimsJws(token)
                     .getBody();
-            List<GrantedAuthority> authorities = AuthorityUtils.commaSeparatedStringToAuthorityList(claims.get(ROLE_CLAIM_NAME, String.class));
+            List<GrantedAuthority> authorities = AuthorityUtils.commaSeparatedStringToAuthorityList(
+                    claims.get(ROLE_CLAIM_NAME, String.class)
+            );
 
             return new UsernamePasswordAuthenticationToken(claims.getSubject(), token, authorities);
         } catch (Exception ex) {
@@ -79,5 +80,14 @@ public class JWTUtils {
             case GOOGLE -> googleKey;
             case FACEBOOK -> facebookKey;
         };
+    }
+
+    public ResponseCookie getCookie(String name, String value, long maxAgeSeconds) {
+        return ResponseCookie.from(name, value)
+                .maxAge(maxAgeSeconds)
+                .path("/")
+                .secure(false)
+                .httpOnly(false)
+                .build();
     }
 }

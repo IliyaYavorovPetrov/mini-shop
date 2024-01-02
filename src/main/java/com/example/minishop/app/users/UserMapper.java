@@ -25,7 +25,8 @@ public class UserMapper {
                 userRequestDTO.name(),
                 userRequestDTO.email(),
                 userRequestDTO.imageURL(),
-                userRoleType);
+                userRoleType
+        );
     }
 
     public static UserRequestDTO fromUserModelToUserRequestDTO(UserModel userModel) {
