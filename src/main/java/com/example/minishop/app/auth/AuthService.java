@@ -27,7 +27,7 @@ public class AuthService {
     private final Logger logger = LoggerFactory.getLogger(AuthService.class);
     private final UserService usersService;
     private final JWTUtils jwtUtils;
-    private final GoogleIdTokenVerifier googleIdTokenVerifier;
+    private final GoogleIdTokenVerifier googleIDTokenVerifier;
 
     public AuthService(
             @Value("${app.oauth2.provider.google.id}") String googleClientID,
@@ -39,7 +39,7 @@ public class AuthService {
         this.jwtUtils = jwtUtils;
         NetHttpTransport transport = new NetHttpTransport();
         JsonFactory jsonFactory = new JacksonFactory();
-        googleIdTokenVerifier = new GoogleIdTokenVerifier.Builder(transport, jsonFactory)
+        googleIDTokenVerifier = new GoogleIdTokenVerifier.Builder(transport, jsonFactory)
                 .setAudience(Collections.singletonList(googleClientID))
                 .build();
     }
@@ -86,7 +86,7 @@ public class AuthService {
     private Optional<UserModel> verifyToken(String token, AuthProviderType authProviderType) {
         try {
             if (authProviderType.equals(AuthProviderType.GOOGLE)) {
-                GoogleIdToken googleIDToken = googleIdTokenVerifier.verify(token);
+                GoogleIdToken googleIDToken = googleIDTokenVerifier.verify(token);
                 if (googleIDToken == null) {
                     return Optional.empty();
                 }
@@ -99,7 +99,7 @@ public class AuthService {
 
                 return Optional.of(new UserModel(id, name, email, imageURL, UserRoleType.CLIENT));
             } else if (authProviderType.equals(AuthProviderType.FACEBOOK)) {
-
+                // TODO: Add logic to verify Facebook user
             }
         } catch (Exception ex) {
             logger.error("Failed to verify token with error message {}", ex.getMessage());

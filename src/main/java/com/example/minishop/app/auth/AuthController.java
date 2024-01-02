@@ -4,6 +4,7 @@ import com.example.minishop.app.auth.dtos.SignInRequestDTO;
 import com.example.minishop.app.auth.dtos.SignInResponseDTO;
 import com.example.minishop.app.auth.dtos.SignUpRequestDTO;
 import com.example.minishop.app.auth.dtos.SignUpResponseDTO;
+import com.example.minishop.app.auth.models.SignInModel;
 import com.example.minishop.app.auth.models.SignUpModel;
 import com.example.minishop.app.users.models.UserModel;
 import com.example.minishop.base.BaseController;
@@ -27,8 +28,7 @@ public class AuthController extends BaseController {
 
     @PostMapping("/sign-up")
     public ResponseEntity<SignUpResponseDTO> signUp(
-            @RequestBody SignUpRequestDTO signUpRequestDTO,
-            HttpServletResponse response
+            @RequestBody SignUpRequestDTO signUpRequestDTO
     ) throws IllegalAccessException {
         Optional<SignUpModel> signUpResult = authService.signUp(signUpRequestDTO, AuthProviderType.valueOf(signUpRequestDTO.authProvider()));
         if (signUpResult.isEmpty()) {
@@ -37,29 +37,37 @@ public class AuthController extends BaseController {
 
         String authToken = signUpResult.get().getToken();
         final ResponseCookie cookie = ResponseCookie.from("AUTH-TOKEN", authToken)
-                .httpOnly(true)
+                .httpOnly(false)
                 .maxAge(7 * 24 * 3600)
                 .path("/")
                 .secure(false)
                 .build();
-        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
-        return ResponseEntity.ok(AuthMapper.fromSignUpModelToSignUpRequestDTO(signUpResult.get()));
+
+        return ResponseEntity
+                .ok()
+                .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                .body(AuthMapper.fromSignUpModelToSignUpRequestDTO(signUpResult.get()));
     }
 
     @PostMapping("/sign-in")
     public ResponseEntity<SignInResponseDTO> signIn(
             @RequestBody SignInRequestDTO signInRequestDTO,
             HttpServletResponse response
-    ) {
-        String authToken = "some_token";
+    ) throws IllegalAccessException {
+        Optional<SignInModel> signInResult = authService.signIn(signInRequestDTO, AuthProviderType.valueOf(signInRequestDTO.authProvider()));
+        if (signInResult.isEmpty()) {
+            throw new IllegalAccessException();
+        }
+
+        String authToken = signInResult.get().getToken();
         final ResponseCookie cookie = ResponseCookie.from("AUTH-TOKEN", authToken)
-                .httpOnly(true)
+                .httpOnly(false)
                 .maxAge(7 * 24 * 3600)
                 .path("/")
                 .secure(false)
                 .build();
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
-        return ResponseEntity.ok().build();
+        return ResponseEntity.ok(new SignInResponseDTO(signInResult.get().getUserID(), signInResult.get().getUserRole(), signInResult.get().getAuthProvider()));
     }
 
     @PostMapping("/sign-out")
