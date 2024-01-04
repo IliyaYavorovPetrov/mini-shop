@@ -3,7 +3,6 @@ package com.example.minishop.app.users;
 import com.example.minishop.app.users.dtos.UserRequestDTO;
 import com.example.minishop.app.users.dtos.UserResponseDTO;
 import com.example.minishop.app.users.models.UserModel;
-import com.example.minishop.base.BaseController;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -21,8 +20,8 @@ import java.util.Optional;
 import static com.example.minishop.app.users.UserMapper.fromUserModelToUserResponseDTO;
 
 @RestController
-@RequestMapping("/users")
-public class UserController extends BaseController {
+@RequestMapping("${app.base-path}/user")
+public class UserController {
     private final UserService usersService;
 
     public UserController(UserService usersService) {

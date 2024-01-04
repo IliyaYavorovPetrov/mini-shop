@@ -1,25 +1,38 @@
 package com.example.minishop.app.auth;
 
+import jakarta.annotation.PostConstruct;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import org.springframework.util.AntPathMatcher;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 @Component
 public class JWTRequestFilter extends OncePerRequestFilter {
-    private final JWTUtils jwtUtils;
+    @Value("${app.base-path}")
+    private String basePath;
+    private final List<String> noAuthEndpoints;
+    private final AuthService authService;
 
-    public JWTRequestFilter(JWTUtils jwtUtils) {
-        this.jwtUtils = jwtUtils;
+    public JWTRequestFilter(AuthService authService) {
+        this.noAuthEndpoints = new ArrayList<>();
+        this.authService = authService;
+    }
+
+    @PostConstruct
+    private void initializeNoAuthEndpoints() {
+        noAuthEndpoints.add("/health-check");
+        noAuthEndpoints.add(basePath + "/sign-up");
+        noAuthEndpoints.add(basePath + "/sign-in");
     }
 
     @Override
@@ -28,39 +41,44 @@ public class JWTRequestFilter extends OncePerRequestFilter {
             HttpServletResponse response,
             FilterChain filterChain
     ) throws ServletException, IOException {
-        if (request.getRequestURI().equals("/api/v0/sign-up") || request.getRequestURI().equals("/api/v0/sign-in")) {
-            filterChain.doFilter(request, response);
+        boolean doesNotNeedAuth = noAuthEndpoints.stream()
+                .anyMatch(x -> x.equals(request.getServletPath()));
+
+        if (!doesNotNeedAuth) {
+            List<Cookie> cookies = (request.getCookies() != null)
+                    ? Arrays.asList(request.getCookies())
+                    : List.of();
+
+            boolean containsAuthBothCookies = cookies.stream()
+                    .anyMatch(cookie -> cookie.getName().equals(AuthService.COOKIE_AUTH_TOKEN_NAME)) &&
+                    cookies.stream().anyMatch(cookie -> cookie.getName().equals(AuthService.COOKIE_AUTH_PROVIDER_NAME));
+
+            if (!containsAuthBothCookies) {
+                response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                response.getWriter().write("Access Forbidden");
+                return;
+            }
+
+            String authToken = cookies.stream()
+                    .filter(x -> x.getName().equals(AuthService.COOKIE_AUTH_TOKEN_NAME))
+                    .findFirst()
+                    .map(Cookie::getValue)
+                    .orElse("");
+
+            AuthProviderType authProvider = AuthMapper.getAuthProviderTypeFromStringOrDefault(
+                    cookies.stream()
+                            .filter(x -> x.getName().equals(AuthService.COOKIE_AUTH_PROVIDER_NAME))
+                            .findFirst()
+                            .map(Cookie::getValue)
+                            .orElse("")
+            );
+
+            if (!authService.verifyIfJWTTokenIsValid(authToken, authProvider)) {
+                response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                response.getWriter().write("Access Forbidden");
+                return;
+            }
         }
-
-        List<Cookie> cookies = (request.getCookies() != null)
-                ? Arrays.asList(request.getCookies())
-                : List.of();
-
-        boolean containsAuthBothCookies = cookies.stream()
-                .anyMatch(cookie -> cookie.getName().equals(JWTUtils.COOKIE_AUTH_TOKEN_NAME)) &&
-                cookies.stream().anyMatch(cookie -> cookie.getName().equals(JWTUtils.COOKIE_AUTH_PROVIDER_NAME));
-
-//        if (!containsAuthBothCookies) {
-//            throw new ServletException("Needed information is not available");
-//        }
-
-        String authToken = cookies.stream()
-                .filter(x -> x.getName().equals(JWTUtils.COOKIE_AUTH_TOKEN_NAME))
-                .findFirst()
-                .map(Cookie::getValue)
-                .orElse("");
-
-        AuthProviderType authProvider = AuthMapper.getAuthProviderTypeFromStringOrDefault(
-                cookies.stream()
-                        .filter(x -> x.getName().equals(JWTUtils.COOKIE_AUTH_PROVIDER_NAME))
-                        .findFirst()
-                        .map(Cookie::getValue)
-                        .orElse("")
-        );
-
-//        if (jwtUtils.verifyAndGetAuthentication(authToken, authProvider) == null) {
-//            throw new ServletException("Authentication failed.");
-//        }
 
         filterChain.doFilter(request, response);
     }

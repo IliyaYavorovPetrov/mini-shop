@@ -1,4 +1,5 @@
 app:
+  base-path: /api/v0
   client:
     host: ${CLIENT_HOST}
   oauth2:

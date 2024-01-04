@@ -12,42 +12,64 @@ import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
 import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.json.JsonFactory;
 import com.google.api.client.json.jackson2.JacksonFactory;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.security.Keys;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseCookie;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.stereotype.Service;
 
+import java.security.Key;
 import java.util.Collections;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static com.example.minishop.app.users.UserMapper.fromUserModelToUserRequestDTO;
 
 @Service
 public class AuthService {
-
+    public static final long TOKEN_VALIDITY_SECS = 3600L;
+    public static final String COOKIE_AUTH_TOKEN_NAME = "AUTH-TOKEN";
+    public static final String COOKIE_AUTH_PROVIDER_NAME = "AUTH-PROVIDER";
+    public static final String ROLE_CLAIM_NAME = "role";
+    private static final String DELIMITER = "|";
+    private final Key googleKey;
+    private final Key facebookKey;
     private final Logger logger = LoggerFactory.getLogger(AuthService.class);
     private final UserService usersService;
-    private final JWTUtils jwtUtils;
     private final GoogleIdTokenVerifier googleIDTokenVerifier;
 
     public AuthService(
             @Value("${app.oauth2.provider.google.id}") String googleClientID,
+            @Value("${app.oauth2.provider.google.secret}") String googleClientSecret,
             @Value("${app.oauth2.provider.facebook.id}") String facebookClientID,
-            UserService usersService,
-            JWTUtils jwtUtils
+            @Value("${app.oauth2.provider.facebook.secret}") String facebookClientSecret,
+            UserService usersService
     ) {
         this.usersService = usersService;
-        this.jwtUtils = jwtUtils;
-        NetHttpTransport transport = new NetHttpTransport();
-        JsonFactory jsonFactory = new JacksonFactory();
-        googleIDTokenVerifier = new GoogleIdTokenVerifier.Builder(transport, jsonFactory)
+
+        googleIDTokenVerifier = new GoogleIdTokenVerifier
+                .Builder(new NetHttpTransport(), new JacksonFactory())
                 .setAudience(Collections.singletonList(googleClientID))
                 .build();
+        this.googleKey = Keys.hmacShaKeyFor(googleClientSecret.getBytes());
+
+        // TODO: add Facebook ID token verifier
+        this.facebookKey = Keys.hmacShaKeyFor(facebookClientSecret.getBytes());
     }
 
     public Optional<SignUpModel> signUp(SignUpRequestDTO signUpRequestDTO, AuthProviderType authProviderType) {
-        Optional<UserModel> userFromProvider = verifyIdentity(signUpRequestDTO.token(), authProviderType);
+        Optional<UserModel> userFromProvider = verifyIdentityByAuthProvider(signUpRequestDTO.token(), authProviderType);
         if (userFromProvider.isEmpty()) {
             return Optional.empty();
         }
@@ -56,7 +78,7 @@ public class AuthService {
 
         return Optional.of(
                 new SignUpModel(
-                        jwtUtils.createToken(userFromProvider.get(), authProviderType),
+                        createJWTToken(userFromProvider.get(), authProviderType),
                         userID,
                         UserRoleType.CLIENT.name(),
                         authProviderType.name()
@@ -65,7 +87,7 @@ public class AuthService {
     }
 
     public Optional<SignInModel> signIn(SignInRequestDTO signInRequestDTO, AuthProviderType authProviderType) {
-        Optional<UserModel> userFromProvider = verifyIdentity(signInRequestDTO.token(), authProviderType);
+        Optional<UserModel> userFromProvider = verifyIdentityByAuthProvider(signInRequestDTO.token(), authProviderType);
         if (userFromProvider.isEmpty()) {
             return Optional.empty();
         }
@@ -77,7 +99,7 @@ public class AuthService {
 
         return Optional.of(
                 new SignInModel(
-                        jwtUtils.createToken(user.get(), authProviderType),
+                        createJWTToken(user.get(), authProviderType),
                         user.get().getId(),
                         user.get().getRole().toString(),
                         authProviderType.name()
@@ -85,7 +107,7 @@ public class AuthService {
         );
     }
 
-    private Optional<UserModel> verifyIdentity(String token, AuthProviderType authProviderType) {
+    private Optional<UserModel> verifyIdentityByAuthProvider(String token, AuthProviderType authProviderType) {
         try {
             if (authProviderType.equals(AuthProviderType.GOOGLE)) {
                 GoogleIdToken googleIDToken = googleIDTokenVerifier.verify(token);
@@ -110,4 +132,59 @@ public class AuthService {
         return Optional.empty();
     }
 
+    public String createJWTToken(UserModel userModel, AuthProviderType authProviderType) {
+        return "my-token";
+//        Key key = getProperKey(authProviderType);
+//        Map<String, Object> claims = new HashMap<>();
+//        claims.put(ROLE_CLAIM_NAME, userModel.getRole());
+//
+//        return Jwts.builder()
+//                .setSubject(userModel.getId())
+//                .setIssuedAt(new Date())
+//                .setExpiration(new Date((new Date()).getTime() + TOKEN_VALIDITY_SECS))
+//                .addClaims(claims)
+//                .signWith(key, SignatureAlgorithm.HS512)
+//                .compact();
+    }
+
+    public boolean verifyIfJWTTokenIsValid(String token, AuthProviderType authProviderType) {
+        Key key = getProperAuthProviderKey(authProviderType);
+        if (token.equals("my-token")) {
+            return true;
+        }
+        return false;
+//        try {
+//            Key key = getProperKey(authProviderType);
+//
+//            Claims claims = Jwts.parserBuilder()
+//                    .setSigningKey(key)
+//                    .build()
+//                    .parseClaimsJws(token)
+//                    .getBody();
+//            List<GrantedAuthority> authorities = AuthorityUtils.commaSeparatedStringToAuthorityList(
+//                    claims.get(ROLE_CLAIM_NAME, String.class)
+//            );
+//
+//            return new UsernamePasswordAuthenticationToken(claims.getSubject(), token, authorities);
+//        } catch (Exception ex) {
+//            logger.error("Failed to verify a token {}, with error message {}", token, ex.getMessage());
+//            return null;
+//        }
+    }
+
+    private Key getProperAuthProviderKey(AuthProviderType authProviderType) {
+        return switch (authProviderType) {
+            case GOOGLE -> googleKey;
+            case FACEBOOK -> facebookKey;
+        };
+    }
+
+    public ResponseCookie getCookie(String name, String value, long maxAgeSeconds) {
+        return ResponseCookie.from(name, value)
+                .maxAge(maxAgeSeconds)
+                .path("/")
+                .secure(false)
+                .httpOnly(false)
+                .build();
+    }
 }

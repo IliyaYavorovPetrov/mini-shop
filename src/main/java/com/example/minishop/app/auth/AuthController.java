@@ -6,24 +6,23 @@ import com.example.minishop.app.auth.dtos.SignUpRequestDTO;
 import com.example.minishop.app.auth.dtos.SignUpResponseDTO;
 import com.example.minishop.app.auth.models.SignInModel;
 import com.example.minishop.app.auth.models.SignUpModel;
-import com.example.minishop.base.BaseController;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Optional;
 
 @RestController
-public class AuthController extends BaseController {
+@RequestMapping("${app.base-path}/user")
+public class AuthController {
     private final AuthService authService;
-    private final JWTUtils jwtUtils;
 
-    public AuthController(AuthService authService, JWTUtils jwtUtils) {
+    public AuthController(AuthService authService) {
         this.authService = authService;
-        this.jwtUtils = jwtUtils;
     }
 
     @PostMapping("/sign-up")
@@ -38,16 +37,16 @@ public class AuthController extends BaseController {
             throw new IllegalAccessException();
         }
 
-        ResponseCookie cookieAuthToken = jwtUtils.getCookie(
-                JWTUtils.COOKIE_AUTH_TOKEN_NAME,
+        ResponseCookie cookieAuthToken = authService.getCookie(
+                AuthService.COOKIE_AUTH_TOKEN_NAME,
                 signUpResult.get().getToken(),
-                JWTUtils.TOKEN_VALIDITY_SECS
+                AuthService.TOKEN_VALIDITY_SECS
         );
 
-        ResponseCookie cookieAuthProvider = jwtUtils.getCookie(
-                JWTUtils.COOKIE_AUTH_PROVIDER_NAME,
+        ResponseCookie cookieAuthProvider = authService.getCookie(
+                AuthService.COOKIE_AUTH_PROVIDER_NAME,
                 signUpResult.get().getAuthProvider(),
-                JWTUtils.TOKEN_VALIDITY_SECS
+                AuthService.TOKEN_VALIDITY_SECS
         );
 
         return ResponseEntity
@@ -69,16 +68,16 @@ public class AuthController extends BaseController {
             throw new IllegalAccessException();
         }
 
-        ResponseCookie cookieAuthToken = jwtUtils.getCookie(
-                JWTUtils.COOKIE_AUTH_TOKEN_NAME,
+        ResponseCookie cookieAuthToken = authService.getCookie(
+                AuthService.COOKIE_AUTH_TOKEN_NAME,
                 signInResult.get().getToken(),
-                JWTUtils.TOKEN_VALIDITY_SECS
+                AuthService.TOKEN_VALIDITY_SECS
         );
 
-        ResponseCookie cookieAuthProvider = jwtUtils.getCookie(
-                JWTUtils.COOKIE_AUTH_PROVIDER_NAME,
+        ResponseCookie cookieAuthProvider = authService.getCookie(
+                AuthService.COOKIE_AUTH_PROVIDER_NAME,
                 signInResult.get().getAuthProvider(),
-                JWTUtils.TOKEN_VALIDITY_SECS
+                AuthService.TOKEN_VALIDITY_SECS
         );
 
         return ResponseEntity
@@ -90,16 +89,16 @@ public class AuthController extends BaseController {
 
     @PostMapping("/sign-out")
     public ResponseEntity<Void> signOut() {
-        ResponseCookie cookieAuthToken = jwtUtils.getCookie(
-                JWTUtils.COOKIE_AUTH_TOKEN_NAME,
+        ResponseCookie cookieAuthToken = authService.getCookie(
+                AuthService.COOKIE_AUTH_TOKEN_NAME,
                 "",
-                JWTUtils.TOKEN_VALIDITY_SECS
+                AuthService.TOKEN_VALIDITY_SECS
         );
 
-        ResponseCookie cookieAuthProvider = jwtUtils.getCookie(
-                JWTUtils.COOKIE_AUTH_PROVIDER_NAME,
+        ResponseCookie cookieAuthProvider = authService.getCookie(
+                AuthService.COOKIE_AUTH_PROVIDER_NAME,
                 "",
-                JWTUtils.TOKEN_VALIDITY_SECS
+                AuthService.TOKEN_VALIDITY_SECS
         );
 
         return ResponseEntity
