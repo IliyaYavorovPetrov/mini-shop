@@ -27,6 +27,7 @@ import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.stereotype.Service;
 
 import java.security.Key;
+import java.time.Instant;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
@@ -62,10 +63,10 @@ public class AuthService {
                 .Builder(new NetHttpTransport(), new JacksonFactory())
                 .setAudience(Collections.singletonList(googleClientID))
                 .build();
-        this.googleKey = Keys.hmacShaKeyFor(googleClientSecret.getBytes());
+        this.googleKey = Keys.hmacShaKeyFor((googleClientSecret + DELIMITER + googleClientSecret).getBytes());
 
         // TODO: add Facebook ID token verifier
-        this.facebookKey = Keys.hmacShaKeyFor(facebookClientSecret.getBytes());
+        this.facebookKey = Keys.hmacShaKeyFor((facebookClientSecret + DELIMITER + facebookClientSecret).getBytes());
     }
 
     public Optional<SignUpModel> signUp(SignUpRequestDTO signUpRequestDTO, AuthProviderType authProviderType) {
@@ -133,43 +134,39 @@ public class AuthService {
     }
 
     public String createJWTToken(UserModel userModel, AuthProviderType authProviderType) {
-        return "my-token";
-//        Key key = getProperKey(authProviderType);
-//        Map<String, Object> claims = new HashMap<>();
-//        claims.put(ROLE_CLAIM_NAME, userModel.getRole());
-//
-//        return Jwts.builder()
-//                .setSubject(userModel.getId())
-//                .setIssuedAt(new Date())
-//                .setExpiration(new Date((new Date()).getTime() + TOKEN_VALIDITY_SECS))
-//                .addClaims(claims)
-//                .signWith(key, SignatureAlgorithm.HS512)
-//                .compact();
+        Key key = getProperAuthProviderKey(authProviderType);
+        Map<String, Object> claims = new HashMap<>();
+        claims.put(ROLE_CLAIM_NAME, userModel.getRole().name());
+
+        Instant issuedAt = Instant.now();
+        Instant expiration = issuedAt.plusSeconds(TOKEN_VALIDITY_SECS);
+        return Jwts.builder()
+                .setSubject(userModel.getId())
+                .setIssuedAt(Date.from(issuedAt))
+                .setExpiration(Date.from(expiration))
+                .addClaims(claims)
+                .signWith(key, SignatureAlgorithm.HS512)
+                .compact();
     }
 
     public boolean verifyIfJWTTokenIsValid(String token, AuthProviderType authProviderType) {
-        Key key = getProperAuthProviderKey(authProviderType);
-        if (token.equals("my-token")) {
+        try {
+            Key key = getProperAuthProviderKey(authProviderType);
+
+            Claims claims = Jwts.parserBuilder()
+                    .setSigningKey(key)
+                    .build()
+                    .parseClaimsJws(token)
+                    .getBody();
+            List<GrantedAuthority> authorities = AuthorityUtils.commaSeparatedStringToAuthorityList(
+                    claims.get(ROLE_CLAIM_NAME, String.class)
+            );
+
             return true;
+        } catch (Exception ex) {
+            logger.error("Failed to verify a token {}, with error message {}", token, ex.getMessage());
+            return false;
         }
-        return false;
-//        try {
-//            Key key = getProperKey(authProviderType);
-//
-//            Claims claims = Jwts.parserBuilder()
-//                    .setSigningKey(key)
-//                    .build()
-//                    .parseClaimsJws(token)
-//                    .getBody();
-//            List<GrantedAuthority> authorities = AuthorityUtils.commaSeparatedStringToAuthorityList(
-//                    claims.get(ROLE_CLAIM_NAME, String.class)
-//            );
-//
-//            return new UsernamePasswordAuthenticationToken(claims.getSubject(), token, authorities);
-//        } catch (Exception ex) {
-//            logger.error("Failed to verify a token {}, with error message {}", token, ex.getMessage());
-//            return null;
-//        }
     }
 
     private Key getProperAuthProviderKey(AuthProviderType authProviderType) {
