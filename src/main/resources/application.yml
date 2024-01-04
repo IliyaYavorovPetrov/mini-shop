@@ -1,0 +1,20 @@
+app:
+  base-path: /api/v0
+  client:
+    host: ${CLIENT_HOST}
+  oauth2:
+    provider:
+      google:
+        id: ${GOOGLE_CLIENT_ID}
+        secret: ${GOOGLE_CLIENT_SECRET}
+      facebook:
+        id: ${FACEBOOK_CLIENT_ID}
+        secret: ${FACEBOOK_CLIENT_SECRET}
+spring:
+  profiles:
+    active: ${ENVIRONMENT}
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    url: ${DB_URL}
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
