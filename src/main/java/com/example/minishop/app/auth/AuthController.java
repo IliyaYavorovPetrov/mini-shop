@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.Optional;
 
 @RestController
-@RequestMapping("${app.base-path}/user")
+@RequestMapping("${app.base-path}")
 public class AuthController {
     private final AuthService authService;
 
