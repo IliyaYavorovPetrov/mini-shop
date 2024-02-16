@@ -3,6 +3,8 @@ FROM eclipse-temurin:17-jdk-jammy AS build-stage
 ADD . /app/
 WORKDIR /app/
 
+RUN chmod +x ./gradlew
+
 RUN ./gradlew clean
 RUN ./gradlew bootJar
 
