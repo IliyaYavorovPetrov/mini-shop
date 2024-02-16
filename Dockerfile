@@ -2,12 +2,7 @@ FROM eclipse-temurin:17-jdk-jammy
 
 WORKDIR /app
 
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends dos2unix
-
 COPY . .
-
-RUN dos2unix gradlew
 
 RUN ./gradlew build -x test
 
