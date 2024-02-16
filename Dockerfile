@@ -1,16 +1,11 @@
-FROM amazoncorretto:17-al2023-jdk AS build-stage
+FROM eclipse-temurin:17-jdk-jammy AS base
+WORKDIR /app
+COPY . .
 
-ADD . /app/
-WORKDIR /app/
+FROM base AS build
+RUN ./gradlew build -x test
 
-RUN ./gradlew clean
-RUN ./gradlew bootJar --args='--spring.profiles.active=prod'
-
-FROM amazoncorretto:17-al2023-jdk AS run-stage
-
-ADD . /app/
-WORKDIR /app/
-COPY --from=build-stage /app/build/libs/*.jar app.jar
-
-ENV SPRING_PROFILES_ACTIVE=prod
-ENTRYPOINT ["java","-jar","app.jar"]
+FROM build AS run
+EXPOSE 8080
+COPY --from=build /app/build/libs/*.jar app.jar
+CMD ["java", "-jar", "app.jar"]
