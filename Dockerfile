@@ -1,13 +1,16 @@
-FROM eclipse-temurin:17-jdk-jammy
+FROM eclipse-temurin:17-jdk-jammy AS build-stage
 
-WORKDIR /app
+ADD . /app/
+WORKDIR /app/
 
-COPY . .
+RUN ./gradlew clean
+RUN ./gradlew bootJar
 
-RUN ./gradlew build -x test
+FROM amd64/openjdk:18.0-oracle AS run-stage
 
-EXPOSE 8080
+ADD . /app/
+WORKDIR /app/
+COPY --from=build-stage /app/build/libs/*.jar app.jar
 
-COPY /build/libs/*.jar app.jar
-
-CMD ["java", "-jar", "app.jar"]
+ENV SPRING_PROFILES_ACTIVE=dev
+ENTRYPOINT ["java","-jar","app.jar"]
